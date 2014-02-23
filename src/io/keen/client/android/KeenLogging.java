@@ -22,8 +22,8 @@ public class KeenLogging {
     }
 
     static void log(String msg) {
-        LOGGER.log(Level.FINER, msg);
         if (LOGGER.getLevel() == Level.FINER) {
+            LOGGER.log(Level.FINER, msg);
             try {
                 Log.d("KEEN_CLIENT", msg);
             } catch (RuntimeException e) {
