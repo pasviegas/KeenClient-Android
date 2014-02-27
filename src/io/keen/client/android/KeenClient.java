@@ -344,6 +344,8 @@ public class KeenClient {
             // this map will hold references from a single directory to all its children
             Map<File, List<File>> fileMap = new HashMap<File, List<File>>();
 
+            int numEvents = 0;
+
             // iterate through the directories
             for (File directory : directories) {
                 // get their files
@@ -357,8 +359,20 @@ public class KeenClient {
                     for (File file : files) {
                         // iterate through the files, deserialize them from JSON, and then add them to the list
                         Map<String, Object> eventDict = readMapFromJsonFile(file);
-                        requestList.add(eventDict);
-                        fileList.add(file);
+                        if (eventDict != null) {
+                            requestList.add(eventDict);
+                            fileList.add(file);
+                            numEvents++;
+                        } else {
+                            // couldn't read the file, let's whack it so it doesn't mess anything up
+                            if (file.delete()) {
+                                KeenLogging.log("No event could be deserialized. Deleted file: " +
+                                                        file.getAbsolutePath());
+                            } else {
+                                KeenLogging.log("No event could be deserialized and couldn't delete file: " +
+                                                        file.getAbsolutePath());
+                            }
+                        }
                     }
                     if (!requestList.isEmpty()) {
                         requestMap.put(directory.getName(), requestList);
@@ -373,8 +387,9 @@ public class KeenClient {
             // START HTTP REQUEST, WRITE JSON TO REQUEST STREAM
             try {
                 if (!fileMap.isEmpty() && !requestMap.isEmpty()) { // could be empty due to inner null check above on files
-                    HttpURLConnection connection = sendEvents(requestMap);
+                    KeenLogging.log(String.format("Going to upload %s events", numEvents));
 
+                    HttpURLConnection connection = sendEvents(requestMap);
 
                     if (connection.getResponseCode() == 200) {
                         InputStream input = connection.getInputStream();
@@ -641,7 +656,7 @@ public class KeenClient {
      * Setter for the Active Flag for this instance of the {@link KeenClient}. Deactivated when KeenClient has a problem
      * during initialization.
      */
-    private void setActive(boolean active) {
+    public void setActive(boolean active) {
         this.active = active;
     }
 
